@@ -1,6 +1,6 @@
-USE formativaHogwarts; 
+use formativaHogwarts;
 
-ALTER TABLE usuarios
+ALTER TABLE usuarios 
 ADD COLUMN foto text;
 
 ALTER TABLE usuarios
@@ -8,7 +8,9 @@ ADD COLUMN num_phone int;
 
 create table solicitantes (
 id_solicitantes int ,
-nome varchar(100),
+id bigint,
+nome varchar(150),
+FOREIGN KEY (id) REFERENCES usuarios(id),
 primary key (id_solicitantes)
 );
 
@@ -21,7 +23,6 @@ estatus varchar(100),
 primary key (id_status)
 );
 
- 
 
 create table tarefas(
 id_tarefas int ,
@@ -65,73 +66,80 @@ VALUES (5, 'Descrição Tarefa 1', '2023-06-10', '2023-05-30', NULL, 1, 3, 2, 3)
 INSERT INTO tarefas (id_tarefas, descricao, prazo, dti, dtf, locais, solicitantes, responsaveis, estatus)
 VALUES (6, 'Descrição Tarefa 1', '2023-06-10', '2023-05-30', NULL, 1, 3, 2, 4);
 
+INSERT INTO tarefas (id_tarefas, descricao, prazo, dti, dtf, locais, solicitantes, responsaveis, estatus)
+VALUES (7, 'Descrição Tarefa 1', '2023-06-10', '2023-05-30', NULL, 2, 1, 3, 4);
 
 -- primeira
+
 select t.id_tarefas, t.descricao, t.prazo, t.dti, t.dtf, s.nome as solicitante, u.nome as responsavel, e.comentario, e.fotos
 from tarefas t
 join solicitantes s on t.solicitantes = s.id_solicitantes
 join usuarios u on t.responsaveis = u.id 
 join estatus e on t.estatus = e.id_status
-where t.dti is not null;
+where t.dti  is not null;
 
 -- segunda
 
-select l.id, l.nome, count(t.id_tarefas) as quantidade_tarefas
-from locais l
-join tarefas t on l.id = t.locais
-group by l.id, l.nome
-having count(t.id_tarefas) > 2;
-  
-  -- terceira 
-  
 select u.id, u.nome, count(t.id_tarefas) as quantidade_tarefas
 from usuarios u
 join tarefas t on u.id = t.responsaveis
 group by u.id, u.nome
+having count(t.id_tarefas) > 2;
+
+-- terceira 
+
+select u.id, u.nome, count(t.id_tarefas) as quantidade_tarefas
+from usuarios u
+join tarefas t ON u.id = t.responsaveis
+group by u.id, u.nome
 having count(t.id_tarefas) >= 2;
-  
-  -- quarta
+
+-- quarta 
 
 select e.id, e.nome as nome_evento, t.id_tarefas, t.descricao
 from eventos e
 join locais l on e.localFK = l.id
 left join tarefas t on l.id = t.locais and t.dtf is null
-WHERE e.inicio > CURDATE();
+where e.inicio > CURDATE();
 
-  -- quinta 
+-- quinta 
 
 select l.id, l.nome as nome_local, COUNT(t.id_tarefas) as quantidade_tarefas
 from locais l
 left join tarefas t on l.id = t.locais
 group by l.id, l.nome;
 
-  -- sexta
+-- sexta 
 
 select l.id, l.nome as nome_local, COUNT(t.id_tarefas) as quantidade_tarefas_concluidas
 from locais l
 join tarefas t on l.id = t.locais
 join estatus e on t.estatus = e.id_status
-where e.id_status = 4
+where e.id_status = 4 
 group by l.id, l.nome;
-
-  -- decima
-
-select u.id_usuarios, u.nome as nome_usuario, COUNT(t.id_tarefas) as quantidade_tarefas
+  
+  -- decima 
+  
+select u.id, u.nome as nome, COUNT(t.id_tarefas) as quantidade_tarefas
 from usuarios u
-left join tarefas t on  u.id_usuarios = t.responsaveis
-group by u.id_usuarios, u.nome;
+left join tarefas t on u.id = t.responsaveis
+group by u.id, u.nome;
 
-  -- onze
+-- decima primeira
 
 select u.id, u.nome as nome_usuario, COUNT(t.id_tarefas) as quantidade_tarefas
 from usuarios u
-left join tarefas t on  u.id = t.responsaveis
+left join tarefas t on u.id = t.responsaveis
+where t.dtf is null 
 group by u.id, u.nome;
 
-  -- doze
+-- decima segunda 
 
-select year(t.dti) as ano,month(t.dti) as mes,l.id as id_local,l.nome as nome_local,
-avg(COUNT(t.id_tarefas)) as media_tarefas
-from tarefas t
-join locais l on t.locais = l.id
-group by(t.dti), month(t.dti),l.id,l.nome;
+select ano, mes, id_local, nome_local, avg(quantidade_tarefas) as media_tarefas
+from (
+    select year(t.dti) as ano, month(t.dti) as mes, l.id as id_local, l.nome as nome_local, COUNT(t.id_tarefas) as quantidade_tarefas
+    from tarefas t
+    join locais l on t.locais = l.id
+    group by(t.dti), month(t.dti), l.id, l.nome, t.id_tarefas
+) subquery
+group by ano, mes, id_local, nome_local;
